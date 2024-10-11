@@ -1,4 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:screen_capturer/screen_capturer.dart';
+import 'package:image/image.dart' as img;
 
 void main() {
   runApp(const MyApp());
@@ -56,9 +59,73 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  Uint8List? _imageData;
 
-  void _incrementCounter() {
+  /// Adds a timestamp to the given image data.
+  ///
+  /// This function decodes the provided image data, adds a timestamp at the
+  /// specified position, and returns the modified image data.
+  ///
+  /// The timestamp is drawn with a semi-transparent black background to ensure
+  /// readability.
+  ///
+  /// Parameters:
+  /// - `imageData` (`Uint8List`): The original image data.
+  /// - `x` (`int`, optional): The x-coordinate of the top-left corner of the
+  ///   timestamp. Default is 10.
+  /// - `y` (`int`, optional): The y-coordinate of the top-left corner of the
+  ///   timestamp. Default is 10.
+  /// - `textHeight` (`int`, optional): The height of the text background.
+  ///   Default is 30.
+  ///
+  /// Returns:
+  /// - `Uint8List`: The modified image data with the timestamp added.
+  Uint8List addTimestampToImage(
+    Uint8List imageData, {
+    int x = 10,
+    int y = 10,
+    int textHeight = 30,
+  }) {
+    img.Image? originalImage = img.decodeImage(imageData);
+    if (originalImage == null) return imageData;
+
+    String timestamp = DateTime.now().toLocal().toString();
+
+    int maxWidth = originalImage.width - 20;
+
+    // Draw background
+    img.fillRect(
+      originalImage,
+      x1: x,
+      y1: y,
+      x2: x + maxWidth,
+      y2: y + textHeight,
+      color: img.ColorRgba8(0, 0, 0, 128),
+    );
+
+    // Draw the timestamp on the image
+    img.drawString(
+      originalImage,
+      timestamp,
+      x: 10,
+      y: 10,
+      font: img.arial24,
+      color: img.ColorRgb8(0, 0, 0),
+    );
+
+    return Uint8List.fromList(img.encodePng(originalImage));
+  }
+
+  void _incrementCounter() async {
+    CapturedData? capturedData = await screenCapturer.capture(
+      mode: CaptureMode.region,
+      imagePath: null,
+      silent: false,
+    );
+    screenCapturer.isAccessAllowed();
+    final hoge = addTimestampToImage(capturedData!.imageBytes!);
     setState(() {
+      _imageData = hoge;
       // This call to setState tells the Flutter framework that something has
       // changed in this State, which causes it to rerun the build method below
       // so that the display can reflect the updated values. If we changed
@@ -105,6 +172,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            if (_imageData != null) Image.memory(_imageData!),
             const Text(
               'You have pushed the button this many times:',
             ),
