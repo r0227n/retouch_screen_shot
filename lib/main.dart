@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'dart:typed_data' show Uint8List;
 import 'package:flutter/material.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
@@ -113,24 +113,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Uint8List? _imageData;
   CaptureMode? _selectedCaptureMode;
-
-  Future<void> capture(CaptureMode mode) async {
-    CapturedData? capturedData = await screenCapturer.capture(
-      mode: mode,
-      imagePath: null,
-      silent: false,
-    );
-    setState(() {
-      if (capturedData?.imageBytes != null) {
-        _imageData = addTimestampToImage(capturedData!.imageBytes!);
-      }
-      _selectedCaptureMode = mode;
-    });
-  }
-
-  late final List<CaptureButton> captureButtons;
+  late Future<Uint8List?> _futureImage;
 
   @override
   void initState() {
@@ -159,7 +143,30 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: () => capture(CaptureMode.window),
       ),
     ];
+
+    _futureImage = Future.value(null);
   }
+
+  Future<void> capture(CaptureMode mode) async {
+    setState(() {
+      _futureImage = screenCapturer
+          .capture(
+        mode: mode,
+        imagePath: null,
+        silent: false,
+      )
+          .then((value) {
+        if (value?.imageBytes != null) {
+          return addTimestampToImage(value!.imageBytes!);
+        }
+        return null;
+      });
+
+      _selectedCaptureMode = mode;
+    });
+  }
+
+  late final List<CaptureButton> captureButtons;
 
   /// Adds a timestamp to the given image data.
   ///
@@ -224,7 +231,33 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: _imageData != null ? Image.memory(_imageData!) : const Text('No image captured'),
+        child: FutureBuilder(
+          future: _futureImage,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            }
+
+            return switch ((snapshot.connectionState, snapshot.data)) {
+              (ConnectionState.waiting, null) => const CircularProgressIndicator(),
+              (ConnectionState.done, null) => const Text('No image captured'),
+              (ConnectionState.done, Uint8List data) => Image.memory(
+                  data,
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded) {
+                      return child;
+                    } else {
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: frame != null ? child : const CircularProgressIndicator(),
+                      );
+                    }
+                  },
+                ),
+              _ => const Text('Capturing...'),
+            };
+          },
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
       floatingActionButton: FloatingActionButton(
