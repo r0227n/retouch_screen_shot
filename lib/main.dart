@@ -3,6 +3,61 @@ import 'package:flutter/material.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
 
+class CaptureButton {
+  const CaptureButton({
+    required this.isSelected,
+    required this.icon,
+    required this.selectedIcon,
+    this.iconSize = 56.0,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final bool isSelected;
+  final Widget icon;
+  final Widget selectedIcon;
+  final double iconSize;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  Widget build() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.grey : Colors.transparent,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: IconButton(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        iconSize: iconSize,
+        onPressed: onPressed,
+        tooltip: tooltip,
+        color: isSelected ? Colors.white : null,
+        isSelected: isSelected,
+        icon: icon,
+        selectedIcon: selectedIcon,
+      ),
+    );
+  }
+
+  CaptureButton copyWith({
+    bool? isSelected,
+    Widget? icon,
+    Widget? selectedIcon,
+    double? iconSize,
+    String? tooltip,
+    VoidCallback? onPressed,
+  }) {
+    return CaptureButton(
+      isSelected: isSelected ?? this.isSelected,
+      icon: icon ?? this.icon,
+      selectedIcon: selectedIcon ?? this.selectedIcon,
+      iconSize: iconSize ?? this.iconSize,
+      tooltip: tooltip ?? this.tooltip,
+      onPressed: onPressed ?? this.onPressed,
+    );
+  }
+}
+
 void main() {
   runApp(const MyApp());
 }
@@ -58,8 +113,53 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   Uint8List? _imageData;
+  CaptureMode? _selectedCaptureMode;
+
+  Future<void> capture(CaptureMode mode) async {
+    CapturedData? capturedData = await screenCapturer.capture(
+      mode: mode,
+      imagePath: null,
+      silent: false,
+    );
+    setState(() {
+      if (capturedData?.imageBytes != null) {
+        _imageData = addTimestampToImage(capturedData!.imageBytes!);
+      }
+      _selectedCaptureMode = mode;
+    });
+  }
+
+  late final List<CaptureButton> captureButtons;
+
+  @override
+  void initState() {
+    super.initState();
+
+    captureButtons = [
+      CaptureButton(
+        isSelected: _selectedCaptureMode == CaptureMode.screen,
+        icon: const Icon(Icons.screenshot_monitor),
+        selectedIcon: const Icon(Icons.screenshot_monitor_outlined),
+        tooltip: 'Full Screen',
+        onPressed: () => capture(CaptureMode.screen),
+      ),
+      CaptureButton(
+        isSelected: _selectedCaptureMode == CaptureMode.region,
+        icon: const Icon(Icons.crop),
+        selectedIcon: const Icon(Icons.crop_outlined),
+        tooltip: 'Region',
+        onPressed: () => capture(CaptureMode.region),
+      ),
+      CaptureButton(
+        isSelected: _selectedCaptureMode == CaptureMode.window,
+        icon: const Icon(Icons.tab_outlined),
+        selectedIcon: const Icon(Icons.tab_outlined),
+        tooltip: 'Window',
+        onPressed: () => capture(CaptureMode.window),
+      ),
+    ];
+  }
 
   /// Adds a timestamp to the given image data.
   ///
@@ -116,78 +216,31 @@ class _MyHomePageState extends State<MyHomePage> {
     return Uint8List.fromList(img.encodePng(originalImage));
   }
 
-  void _incrementCounter() async {
-    CapturedData? capturedData = await screenCapturer.capture(
-      mode: CaptureMode.region,
-      imagePath: null,
-      silent: false,
-    );
-    screenCapturer.isAccessAllowed();
-    final hoge = addTimestampToImage(capturedData!.imageBytes!);
-    setState(() {
-      _imageData = hoge;
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (_imageData != null) Image.memory(_imageData!),
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+        child: _imageData != null ? Image.memory(_imageData!) : const Text('No image captured'),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        onPressed: () {},
+        tooltip: 'More options',
+        child: const Icon(Icons.more_vert),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          for (final button in captureButtons)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: button.build(),
+            ),
+        ]),
+      ),
     );
   }
 }
