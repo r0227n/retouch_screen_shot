@@ -13,6 +13,9 @@ dependencies:
 
   cupertino_icons: ^1.0.2
 
+  # state management
+  signals: ^5.5.0
+
   image: ^4.2.0
 
   # Desktop packages
@@ -27,6 +30,8 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^2.0.0
+  custom_lint: ^0.5.11
+  signals_lint: ^5.0.0
 
 flutter:
   uses-material-design: true
