@@ -17,6 +17,9 @@ dependencies:
   screen_capturer: ^0.2.3
   image: ^4.2.0
 
+  # Desktop utilities
+  hotkey_manager: ^0.2.3
+
 dependency_overrides:
   screen_capturer_windows: 0.2.0
 

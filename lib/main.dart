@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
 import 'shortcut.dart';
@@ -59,7 +60,11 @@ extension Uint8ListX on Uint8List {
   }
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await hotKeyManager.unregisterAll();
+
   runApp(const MyApp());
 }
 
@@ -135,7 +140,39 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _futureImage = Future.value(null);
+    final List<HotKey> hotKeys = [
+      HotKey(
+        identifier: 'capture_screen_hotkey',
+        key: PhysicalKeyboardKey.keyS,
+        modifiers: [HotKeyModifier.meta, HotKeyModifier.shift],
+      ),
+      HotKey(
+        identifier: 'capture_window_hotkey',
+        key: PhysicalKeyboardKey.keyW,
+        modifiers: [HotKeyModifier.meta, HotKeyModifier.shift],
+      ),
+      HotKey(
+        identifier: 'capture_region_hotkey',
+        key: PhysicalKeyboardKey.keyR,
+        modifiers: [HotKeyModifier.meta, HotKeyModifier.shift],
+      ),
+    ];
+
+    _futureImage = Future.wait(
+      hotKeys.map(
+        (key) => hotKeyManager.register(
+          key,
+          keyDownHandler: (hotKey) {
+            capture(switch (hotKey.key) {
+              PhysicalKeyboardKey.keyS => CaptureMode.screen,
+              PhysicalKeyboardKey.keyW => CaptureMode.window,
+              PhysicalKeyboardKey.keyR => CaptureMode.region,
+              _ => throw Exception('Invalid hotkey'),
+            });
+          },
+        ),
+      ),
+    ).then((_) => null);
   }
 
   @override
@@ -249,7 +286,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void capture(CaptureMode mode) {
-    print('method');
     setState(() {
       _futureImage = screenCapturer
           .capture(
