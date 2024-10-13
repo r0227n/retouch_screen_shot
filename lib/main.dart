@@ -164,15 +164,27 @@ class _MyHomePageState extends State<MyHomePage> {
                   _showMenuDialog(
                     context: context,
                     children: [
-                      for (final locale in AppLocalizations.supportedLocales)
-                        Watch((context) => RadioListTile<Locale>(
+                      ListTile(
+                        leading: const Icon(Icons.language),
+                        title: Watch(
+                          (context) => Text(context.l10n.language),
+                          dependencies: [settings().locale],
+                        ),
+                        trailing: DropdownMenu<Locale>(
+                          initialSelection: settings.value.locale.value,
+                          requestFocusOnTap: true,
+                          onSelected: (Locale? locale) {
+                            settings().locale.value = locale!;
+                          },
+                          dropdownMenuEntries: AppLocalizations.supportedLocales
+                              .map<DropdownMenuEntry<Locale>>((Locale locale) {
+                            return DropdownMenuEntry<Locale>(
                               value: locale,
-                              groupValue: settings().locale.value,
-                              onChanged: (value) {
-                                settings().locale.value = value ?? const Locale('en');
-                              },
-                              title: Text(locale.toLabel(context)),
-                            ))
+                              label: locale.toLabel(context),
+                            );
+                          }).toList(),
+                        ),
+                      ),
                     ],
                   );
                 },

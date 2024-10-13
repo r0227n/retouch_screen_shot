@@ -1,5 +1,6 @@
 {
     "@@locale": "en",
     "settings": "Settings",
-    "licenses": "Licenses"
+    "licenses": "Licenses",
+    "language": "Language"
 }
