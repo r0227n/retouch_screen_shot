@@ -69,6 +69,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         // This is the theme of your application.
@@ -127,6 +128,38 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        actions: [
+          MenuAnchor(
+            menuChildren: <Widget>[
+              MenuItemButton(
+                child: const Text('Settings'),
+                onPressed: () {
+                  _showMenuDialog(context: context, children: const [
+                    Text('About'),
+                  ]);
+                },
+              ),
+              MenuItemButton(
+                child: const Text('License'),
+                onPressed: () {
+                  // TODO: license dialog
+                },
+              ),
+            ],
+            builder: (BuildContext context, MenuController controller, Widget? child) {
+              return IconButton(
+                onPressed: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
+                icon: const Icon(Icons.more_vert),
+              );
+            },
+          ),
+        ],
       ),
       body: Center(
         child: FutureBuilder(
@@ -196,6 +229,26 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
         ]),
       ),
+    );
+  }
+
+  Future<void> _showMenuDialog({
+    required BuildContext context,
+    required List<Widget> children,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: SingleChildScrollView(
+              child: ListBody(children: children),
+            ),
+          ),
+          contentPadding: const EdgeInsets.all(32.0),
+        );
+      },
     );
   }
 }
