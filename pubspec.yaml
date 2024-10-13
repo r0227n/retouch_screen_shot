@@ -13,9 +13,11 @@ dependencies:
 
   cupertino_icons: ^1.0.2
 
-  # files
-  screen_capturer: ^0.2.3
   image: ^4.2.0
+
+  # Desktop packages
+  screen_capturer: ^0.2.3
+  hotkey_manager: ^0.2.3
 
 dependency_overrides:
   screen_capturer_windows: 0.2.0

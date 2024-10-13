@@ -1,5 +1,6 @@
-import 'dart:typed_data' show Uint8List;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
 
@@ -58,40 +59,40 @@ extension Uint8ListX on Uint8List {
   }
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await hotKeyManager.unregisterAll();
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
+  }
+}
+
+/// A ShortcutManager that logs all keys that it handles.
+class LoggingShortcutManager extends ShortcutManager {
+  @override
+  KeyEventResult handleKeypress(BuildContext context, RawKeyEvent event) {
+    final KeyEventResult result = super.handleKeypress(context, event);
+    if (result == KeyEventResult.handled) {
+      print('Handled shortcut $event in $context');
+    }
+    return result;
   }
 }
 
@@ -119,7 +120,39 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _futureImage = Future.value(null);
+    final List<HotKey> hotKeys = [
+      HotKey(
+        identifier: 'capture_screen_hotkey',
+        key: PhysicalKeyboardKey.keyS,
+        modifiers: [HotKeyModifier.meta, HotKeyModifier.shift],
+      ),
+      HotKey(
+        identifier: 'capture_window_hotkey',
+        key: PhysicalKeyboardKey.keyW,
+        modifiers: [HotKeyModifier.meta, HotKeyModifier.shift],
+      ),
+      HotKey(
+        identifier: 'capture_region_hotkey',
+        key: PhysicalKeyboardKey.keyR,
+        modifiers: [HotKeyModifier.meta, HotKeyModifier.shift],
+      ),
+    ];
+
+    _futureImage = Future.wait(
+      hotKeys.map(
+        (key) => hotKeyManager.register(
+          key,
+          keyDownHandler: (hotKey) {
+            capture(switch (hotKey.key) {
+              PhysicalKeyboardKey.keyS => CaptureMode.screen,
+              PhysicalKeyboardKey.keyW => CaptureMode.window,
+              PhysicalKeyboardKey.keyR => CaptureMode.region,
+              _ => throw Exception('Invalid hotkey'),
+            });
+          },
+        ),
+      ),
+    ).then((_) => null);
   }
 
   @override
@@ -197,39 +230,46 @@ class _MyHomePageState extends State<MyHomePage> {
         child: const Icon(Icons.more_vert),
       ),
       bottomNavigationBar: BottomAppBar(
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          for (final mode in [CaptureMode.screen, CaptureMode.window, CaptureMode.region])
-            IconButton(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              iconSize: 56.0,
-              onPressed: () => setState(() {
-                _futureImage = screenCapturer
-                    .capture(
-                  mode: mode,
-                  imagePath: null,
-                  silent: false,
-                )
-                    .then((value) {
-                  if (value?.imageBytes != null) {
-                    return value!.imageBytes!.addTextToImage(DateTime.now().toLocal().toString());
-                  }
-                  return null;
-                });
-              }),
-              tooltip: switch (mode) {
-                CaptureMode.screen => 'Capture Entire Screen',
-                CaptureMode.window => 'Capture Selected Window',
-                CaptureMode.region => 'Capture Selected Region'
-              },
-              icon: switch (mode) {
-                CaptureMode.screen => const Icon(Icons.screenshot_monitor),
-                CaptureMode.window => const Icon(Icons.tab_outlined),
-                CaptureMode.region => const Icon(Icons.crop)
-              },
-            ),
-        ]),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (final mode in [CaptureMode.screen, CaptureMode.window, CaptureMode.region])
+              IconButton(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                iconSize: 56.0,
+                onPressed: () => capture(mode),
+                tooltip: switch (mode) {
+                  CaptureMode.screen => 'Capture Entire Screen',
+                  CaptureMode.window => 'Capture Selected Window',
+                  CaptureMode.region => 'Capture Selected Region'
+                },
+                icon: switch (mode) {
+                  CaptureMode.screen => const Icon(Icons.screenshot_monitor),
+                  CaptureMode.window => const Icon(Icons.tab_outlined),
+                  CaptureMode.region => const Icon(Icons.crop)
+                },
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  void capture(CaptureMode mode) {
+    setState(() {
+      _futureImage = screenCapturer
+          .capture(
+        mode: mode,
+        imagePath: null,
+        silent: false,
+      )
+          .then((value) {
+        if (value?.imageBytes != null) {
+          return value!.imageBytes!.addTextToImage(DateTime.now().toLocal().toString());
+        }
+        return null;
+      });
+    });
   }
 
   Future<void> _showMenuDialog({
