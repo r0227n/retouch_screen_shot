@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
-import 'shortcut.dart';
 
 extension Uint8ListX on Uint8List {
   /// Adds a text overlay to an image.
@@ -80,26 +79,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: Shortcuts(
-        shortcuts: <LogicalKeySet, Intent>{
-          LogicalKeySet(
-            LogicalKeyboardKey.keyS,
-            LogicalKeyboardKey.meta,
-            LogicalKeyboardKey.shift,
-          ): const CaptureScreenIntent(),
-          LogicalKeySet(
-            LogicalKeyboardKey.keyW,
-            LogicalKeyboardKey.meta,
-            LogicalKeyboardKey.shift,
-          ): const CaptureWindowIntent(),
-          LogicalKeySet(
-            LogicalKeyboardKey.keyR,
-            LogicalKeyboardKey.meta,
-            LogicalKeyboardKey.shift,
-          ): const CaptureRegionIntent(),
-        },
-        child: const MyHomePage(title: 'Flutter Demo Home Page'),
-      ),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
@@ -177,109 +157,99 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Actions(
-      actions: <Type, Action<Intent>>{
-        CaptureScreenIntent: CaptureScreenAction(() => capture(CaptureMode.screen)),
-        CaptureWindowIntent: CaptureWindowAction(() => capture(CaptureMode.window)),
-        CaptureRegionIntent: CaptureRegionAction(() => capture(CaptureMode.region)),
-      },
-      child: FocusScope(
-        autofocus: true,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            title: Text(widget.title),
-            actions: [
-              MenuAnchor(
-                menuChildren: <Widget>[
-                  MenuItemButton(
-                    child: const Text('Settings'),
-                    onPressed: () {
-                      _showMenuDialog(context: context, children: const [
-                        Text('About'),
-                      ]);
-                    },
-                  ),
-                  MenuItemButton(
-                    child: const Text('License'),
-                    onPressed: () {
-                      // TODO: license dialog
-                    },
-                  ),
-                ],
-                builder: (BuildContext context, MenuController controller, Widget? child) {
-                  return IconButton(
-                    onPressed: () {
-                      if (controller.isOpen) {
-                        controller.close();
-                      } else {
-                        controller.open();
-                      }
-                    },
-                    icon: const Icon(Icons.more_vert),
-                  );
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+        actions: [
+          MenuAnchor(
+            menuChildren: <Widget>[
+              MenuItemButton(
+                child: const Text('Settings'),
+                onPressed: () {
+                  _showMenuDialog(context: context, children: const [
+                    Text('About'),
+                  ]);
+                },
+              ),
+              MenuItemButton(
+                child: const Text('License'),
+                onPressed: () {
+                  // TODO: license dialog
                 },
               ),
             ],
+            builder: (BuildContext context, MenuController controller, Widget? child) {
+              return IconButton(
+                onPressed: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
+                icon: const Icon(Icons.more_vert),
+              );
+            },
           ),
-          body: Center(
-            child: FutureBuilder(
-              future: _futureImage,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                }
+        ],
+      ),
+      body: Center(
+        child: FutureBuilder(
+          future: _futureImage,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            }
 
-                return switch ((snapshot.connectionState, snapshot.data)) {
-                  (ConnectionState.waiting, null) => const CircularProgressIndicator(),
-                  (ConnectionState.done, null) => const Text('No image captured'),
-                  (ConnectionState.done, Uint8List data) => Image.memory(
-                      data,
-                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                        if (wasSynchronouslyLoaded) {
-                          return child;
-                        } else {
-                          return AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: frame != null ? child : const CircularProgressIndicator(),
-                          );
-                        }
-                      },
-                    ),
-                  _ => const Text('Capturing...'),
-                };
-              },
-            ),
-          ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {},
-            tooltip: 'More options',
-            child: const Icon(Icons.more_vert),
-          ),
-          bottomNavigationBar: BottomAppBar(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final mode in [CaptureMode.screen, CaptureMode.window, CaptureMode.region])
-                  IconButton(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                    iconSize: 56.0,
-                    onPressed: () => capture(mode),
-                    tooltip: switch (mode) {
-                      CaptureMode.screen => 'Capture Entire Screen',
-                      CaptureMode.window => 'Capture Selected Window',
-                      CaptureMode.region => 'Capture Selected Region'
-                    },
-                    icon: switch (mode) {
-                      CaptureMode.screen => const Icon(Icons.screenshot_monitor),
-                      CaptureMode.window => const Icon(Icons.tab_outlined),
-                      CaptureMode.region => const Icon(Icons.crop)
-                    },
-                  ),
-              ],
-            ),
-          ),
+            return switch ((snapshot.connectionState, snapshot.data)) {
+              (ConnectionState.waiting, null) => const CircularProgressIndicator(),
+              (ConnectionState.done, null) => const Text('No image captured'),
+              (ConnectionState.done, Uint8List data) => Image.memory(
+                  data,
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded) {
+                      return child;
+                    } else {
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: frame != null ? child : const CircularProgressIndicator(),
+                      );
+                    }
+                  },
+                ),
+              _ => const Text('Capturing...'),
+            };
+          },
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        tooltip: 'More options',
+        child: const Icon(Icons.more_vert),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (final mode in [CaptureMode.screen, CaptureMode.window, CaptureMode.region])
+              IconButton(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                iconSize: 56.0,
+                onPressed: () => capture(mode),
+                tooltip: switch (mode) {
+                  CaptureMode.screen => 'Capture Entire Screen',
+                  CaptureMode.window => 'Capture Selected Window',
+                  CaptureMode.region => 'Capture Selected Region'
+                },
+                icon: switch (mode) {
+                  CaptureMode.screen => const Icon(Icons.screenshot_monitor),
+                  CaptureMode.window => const Icon(Icons.tab_outlined),
+                  CaptureMode.region => const Icon(Icons.crop)
+                },
+              ),
+          ],
         ),
       ),
     );
