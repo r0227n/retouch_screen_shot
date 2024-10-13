@@ -167,7 +167,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       for (final locale in AppLocalizations.supportedLocales)
                         Watch((context) => RadioListTile<Locale>(
                               value: locale,
-                              groupValue: settings.value.locale.value,
+                              groupValue: settings().locale.value,
                               onChanged: (value) {
                                 settings().locale.value = value ?? const Locale('en');
                               },
