@@ -16,11 +16,18 @@ dependencies:
   # state management
   signals: ^5.5.0
 
-  image: ^4.2.0
+  # localization
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
   # Desktop packages
   screen_capturer: ^0.2.3
   hotkey_manager: ^0.2.3
+
+  # utils
+  shared_preferences: ^2.2.3
+  image: ^4.2.0
 
 dependency_overrides:
   screen_capturer_windows: 0.2.0
@@ -35,3 +42,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
