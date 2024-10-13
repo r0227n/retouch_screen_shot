@@ -3,58 +3,58 @@ import 'package:flutter/material.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
 
-class CaptureButton {
-  const CaptureButton({
-    required this.isSelected,
-    required this.icon,
-    required this.selectedIcon,
-    this.iconSize = 56.0,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final bool isSelected;
-  final Widget icon;
-  final Widget selectedIcon;
-  final double iconSize;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  Widget build() {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.grey : Colors.transparent,
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: IconButton(
-        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-        iconSize: iconSize,
-        onPressed: onPressed,
-        tooltip: tooltip,
-        color: isSelected ? Colors.white : null,
-        isSelected: isSelected,
-        icon: icon,
-        selectedIcon: selectedIcon,
-      ),
-    );
-  }
-
-  CaptureButton copyWith({
-    bool? isSelected,
-    Widget? icon,
-    Widget? selectedIcon,
-    double? iconSize,
-    String? tooltip,
-    VoidCallback? onPressed,
+extension Uint8ListX on Uint8List {
+  /// Adds a text overlay to an image.
+  ///
+  /// This function takes a string of text and overlays it onto an image at the specified
+  /// coordinates. The text is drawn with a semi-transparent background to ensure readability.
+  ///
+  /// Parameters:
+  /// - `text` (String): The text to be added to the image.
+  /// - `x` (int, optional): The x-coordinate where the text will be placed. Default is 10.
+  /// - `y` (int, optional): The y-coordinate where the text will be placed. Default is 10.
+  /// - `textHeight` (int, optional): The height of the text background. Default is 30.
+  ///
+  /// Returns:
+  /// - `Uint8List`: The modified image with the text overlay. If the original image cannot be
+  ///   decoded, the function returns the original image.
+  ///
+  /// Example:
+  /// ```dart
+  /// Uint8List modifiedImage = addTextToImage('Hello, World!', x: 50, y: 50, textHeight: 40);
+  /// ```
+  Uint8List addTextToImage(
+    String text, {
+    int x = 10,
+    int y = 10,
+    int textHeight = 30,
   }) {
-    return CaptureButton(
-      isSelected: isSelected ?? this.isSelected,
-      icon: icon ?? this.icon,
-      selectedIcon: selectedIcon ?? this.selectedIcon,
-      iconSize: iconSize ?? this.iconSize,
-      tooltip: tooltip ?? this.tooltip,
-      onPressed: onPressed ?? this.onPressed,
+    img.Image? originalImage = img.decodeImage(this);
+    if (originalImage == null) return this;
+
+    int maxWidth = originalImage.width - 20;
+
+    // Draw background
+    img.fillRect(
+      originalImage,
+      x1: x,
+      y1: y,
+      x2: x + maxWidth,
+      y2: y + textHeight,
+      color: img.ColorRgba8(0, 0, 0, 128),
     );
+
+    // Draw the timestamp on the image
+    img.drawString(
+      originalImage,
+      text,
+      x: 10,
+      y: 10,
+      font: img.arial24,
+      color: img.ColorRgb8(0, 0, 0),
+    );
+
+    return Uint8List.fromList(img.encodePng(originalImage));
   }
 }
 
@@ -113,114 +113,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  CaptureMode? _selectedCaptureMode;
   late Future<Uint8List?> _futureImage;
 
   @override
   void initState() {
     super.initState();
-
-    captureButtons = [
-      CaptureButton(
-        isSelected: _selectedCaptureMode == CaptureMode.screen,
-        icon: const Icon(Icons.screenshot_monitor),
-        selectedIcon: const Icon(Icons.screenshot_monitor_outlined),
-        tooltip: 'Full Screen',
-        onPressed: () => capture(CaptureMode.screen),
-      ),
-      CaptureButton(
-        isSelected: _selectedCaptureMode == CaptureMode.region,
-        icon: const Icon(Icons.crop),
-        selectedIcon: const Icon(Icons.crop_outlined),
-        tooltip: 'Region',
-        onPressed: () => capture(CaptureMode.region),
-      ),
-      CaptureButton(
-        isSelected: _selectedCaptureMode == CaptureMode.window,
-        icon: const Icon(Icons.tab_outlined),
-        selectedIcon: const Icon(Icons.tab_outlined),
-        tooltip: 'Window',
-        onPressed: () => capture(CaptureMode.window),
-      ),
-    ];
-
     _futureImage = Future.value(null);
-  }
-
-  Future<void> capture(CaptureMode mode) async {
-    setState(() {
-      _futureImage = screenCapturer
-          .capture(
-        mode: mode,
-        imagePath: null,
-        silent: false,
-      )
-          .then((value) {
-        if (value?.imageBytes != null) {
-          return addTimestampToImage(value!.imageBytes!);
-        }
-        return null;
-      });
-
-      _selectedCaptureMode = mode;
-    });
-  }
-
-  late final List<CaptureButton> captureButtons;
-
-  /// Adds a timestamp to the given image data.
-  ///
-  /// This function decodes the provided image data, adds a timestamp at the
-  /// specified position, and returns the modified image data.
-  ///
-  /// The timestamp is drawn with a semi-transparent black background to ensure
-  /// readability.
-  ///
-  /// Parameters:
-  /// - `imageData` (`Uint8List`): The original image data.
-  /// - `x` (`int`, optional): The x-coordinate of the top-left corner of the
-  ///   timestamp. Default is 10.
-  /// - `y` (`int`, optional): The y-coordinate of the top-left corner of the
-  ///   timestamp. Default is 10.
-  /// - `textHeight` (`int`, optional): The height of the text background.
-  ///   Default is 30.
-  ///
-  /// Returns:
-  /// - `Uint8List`: The modified image data with the timestamp added.
-  Uint8List addTimestampToImage(
-    Uint8List imageData, {
-    int x = 10,
-    int y = 10,
-    int textHeight = 30,
-  }) {
-    img.Image? originalImage = img.decodeImage(imageData);
-    if (originalImage == null) return imageData;
-
-    String timestamp = DateTime.now().toLocal().toString();
-
-    int maxWidth = originalImage.width - 20;
-
-    // Draw background
-    img.fillRect(
-      originalImage,
-      x1: x,
-      y1: y,
-      x2: x + maxWidth,
-      y2: y + textHeight,
-      color: img.ColorRgba8(0, 0, 0, 128),
-    );
-
-    // Draw the timestamp on the image
-    img.drawString(
-      originalImage,
-      timestamp,
-      x: 10,
-      y: 10,
-      font: img.arial24,
-      color: img.ColorRgb8(0, 0, 0),
-    );
-
-    return Uint8List.fromList(img.encodePng(originalImage));
   }
 
   @override
@@ -267,10 +165,34 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       bottomNavigationBar: BottomAppBar(
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          for (final button in captureButtons)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: button.build(),
+          for (final mode in [CaptureMode.screen, CaptureMode.window, CaptureMode.region])
+            IconButton(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              iconSize: 56.0,
+              onPressed: () => setState(() {
+                _futureImage = screenCapturer
+                    .capture(
+                  mode: mode,
+                  imagePath: null,
+                  silent: false,
+                )
+                    .then((value) {
+                  if (value?.imageBytes != null) {
+                    return value!.imageBytes!.addTextToImage(DateTime.now().toLocal().toString());
+                  }
+                  return null;
+                });
+              }),
+              tooltip: switch (mode) {
+                CaptureMode.screen => 'Capture Entire Screen',
+                CaptureMode.window => 'Capture Selected Window',
+                CaptureMode.region => 'Capture Selected Region'
+              },
+              icon: switch (mode) {
+                CaptureMode.screen => const Icon(Icons.screenshot_monitor),
+                CaptureMode.window => const Icon(Icons.tab_outlined),
+                CaptureMode.region => const Icon(Icons.crop)
+              },
             ),
         ]),
       ),
