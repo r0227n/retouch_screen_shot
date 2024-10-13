@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:signals/signals_flutter.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'l10n/l10n.dart';
+import 'settings.dart';
 
 extension Uint8ListX on Uint8List {
   /// Adds a text overlay to an image.
@@ -62,7 +66,8 @@ extension Uint8ListX on Uint8List {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await hotKeyManager.unregisterAll();
+  final (prefs, _) = await (SharedPreferences.getInstance(), hotKeyManager.unregisterAll()).wait;
+  settings = signal<Settings>(Settings(prefs), autoDispose: true);
 
   runApp(const MyApp());
 }
@@ -79,34 +84,16 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: settings().locale.watch(context),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-/// A ShortcutManager that logs all keys that it handles.
-class LoggingShortcutManager extends ShortcutManager {
-  @override
-  KeyEventResult handleKeypress(BuildContext context, RawKeyEvent event) {
-    final KeyEventResult result = super.handleKeypress(context, event);
-    if (result == KeyEventResult.handled) {
-      print('Handled shortcut $event in $context');
-    }
-    return result;
-  }
-}
-
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -156,6 +143,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void dispose() {
+    hotKeyManager.unregisterAll();
+    settings.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -165,15 +159,38 @@ class _MyHomePageState extends State<MyHomePage> {
           MenuAnchor(
             menuChildren: <Widget>[
               MenuItemButton(
-                child: const Text('Settings'),
+                child: Text(context.l10n.settings),
                 onPressed: () {
-                  _showMenuDialog(context: context, children: const [
-                    Text('About'),
-                  ]);
+                  _showMenuDialog(
+                    context: context,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.language),
+                        title: Watch(
+                          (context) => Text(context.l10n.language),
+                          dependencies: [settings().locale],
+                        ),
+                        trailing: DropdownMenu<Locale>(
+                          initialSelection: settings.value.locale.value,
+                          requestFocusOnTap: true,
+                          onSelected: (Locale? locale) {
+                            settings().locale.value = locale!;
+                          },
+                          dropdownMenuEntries: AppLocalizations.supportedLocales
+                              .map<DropdownMenuEntry<Locale>>((Locale locale) {
+                            return DropdownMenuEntry<Locale>(
+                              value: locale,
+                              label: locale.toLabel(context),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  );
                 },
               ),
               MenuItemButton(
-                child: const Text('License'),
+                child: Text(context.l10n.licenses),
                 onPressed: () {
                   // TODO: license dialog
                 },
@@ -222,12 +239,6 @@ class _MyHomePageState extends State<MyHomePage> {
             };
           },
         ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'More options',
-        child: const Icon(Icons.more_vert),
       ),
       bottomNavigationBar: BottomAppBar(
         child: Row(

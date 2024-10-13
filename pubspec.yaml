@@ -13,11 +13,21 @@ dependencies:
 
   cupertino_icons: ^1.0.2
 
-  image: ^4.2.0
+  # state management
+  signals: ^5.5.0
+
+  # localization
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
   # Desktop packages
   screen_capturer: ^0.2.3
   hotkey_manager: ^0.2.3
+
+  # utils
+  shared_preferences: ^2.2.3
+  image: ^4.2.0
 
 dependency_overrides:
   screen_capturer_windows: 0.2.0
@@ -27,6 +37,9 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^2.0.0
+  custom_lint: ^0.5.11
+  signals_lint: ^5.0.0
 
 flutter:
   uses-material-design: true
+  generate: true
