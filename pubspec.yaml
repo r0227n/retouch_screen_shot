@@ -28,6 +28,7 @@ dependencies:
   # utils
   shared_preferences: ^2.2.3
   image: ^4.2.0
+  flex_color_picker: ^3.4.1
 
 dependency_overrides:
   screen_capturer_windows: 0.2.0

@@ -2,5 +2,6 @@
     "@@locale": "en",
     "settings": "Settings",
     "licenses": "Licenses",
-    "language": "Language"
+    "language": "Language",
+    "overlayTextColor": "Overlay Text Color"
 }
