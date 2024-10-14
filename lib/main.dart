@@ -5,8 +5,15 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'l10n/l10n.dart';
 import 'settings.dart';
+
+extension ColorX on Color {
+  img.ColorRgba8 toRgba8() {
+    return img.ColorRgba8(red, green, blue, alpha);
+  }
+}
 
 extension Uint8ListX on Uint8List {
   /// Adds a text overlay to an image.
@@ -33,6 +40,8 @@ extension Uint8ListX on Uint8List {
     int x = 10,
     int y = 10,
     int textHeight = 30,
+    Color textColor = Colors.black,
+    Color backgroundColor = Colors.white,
   }) {
     img.Image? originalImage = img.decodeImage(this);
     if (originalImage == null) return this;
@@ -46,7 +55,7 @@ extension Uint8ListX on Uint8List {
       y1: y,
       x2: x + maxWidth,
       y2: y + textHeight,
-      color: img.ColorRgba8(0, 0, 0, 128),
+      color: backgroundColor.toRgba8(),
     );
 
     // Draw the timestamp on the image
@@ -56,18 +65,25 @@ extension Uint8ListX on Uint8List {
       x: 10,
       y: 10,
       font: img.arial24,
-      color: img.ColorRgb8(0, 0, 0),
+      color: textColor.toRgba8(),
     );
 
     return Uint8List.fromList(img.encodePng(originalImage));
   }
 }
 
+enum OverlayMenuTile {
+  overlayTextColor,
+  overlayBackgroundColor,
+}
+
+typedef ColorMenu = ({OverlayMenuTile? overlayTile, Signal<Color> signal});
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final (prefs, _) = await (SharedPreferences.getInstance(), hotKeyManager.unregisterAll()).wait;
-  settings = signal<Settings>(Settings(prefs), autoDispose: true);
+  settings = signal<Settings>(Settings(prefs));
 
   runApp(const MyApp());
 }
@@ -161,10 +177,21 @@ class _MyHomePageState extends State<MyHomePage> {
               MenuItemButton(
                 child: Text(context.l10n.settings),
                 onPressed: () {
+                  final colorMenus = <ColorMenu>[
+                    (
+                      overlayTile: OverlayMenuTile.overlayTextColor,
+                      signal: settings().textOverlayColor
+                    ),
+                    (
+                      overlayTile: OverlayMenuTile.overlayBackgroundColor,
+                      signal: settings().backgroundOverlayColor
+                    ),
+                  ];
                   _showMenuDialog(
                     context: context,
                     children: [
                       ListTile(
+                        contentPadding: const EdgeInsets.all(16.0),
                         leading: const Icon(Icons.language),
                         title: Watch(
                           (context) => Text(context.l10n.language),
@@ -185,6 +212,29 @@ class _MyHomePageState extends State<MyHomePage> {
                           }).toList(),
                         ),
                       ),
+                      const Divider(),
+                      for (var index = 0; index < colorMenus.length; index++)
+                        Watch(
+                          (context) => ListTile(
+                            leading: index == 0
+                                ? const Icon(Icons.layers)
+                                : const SizedBox.square(dimension: 24.0),
+                            title: Text(switch (colorMenus[index].overlayTile) {
+                              OverlayMenuTile.overlayTextColor => context.l10n.overlayTextColor,
+                              OverlayMenuTile.overlayBackgroundColor =>
+                                context.l10n.overlayBackgroundColor,
+                              _ => throw Exception('Invalid overlay tile'),
+                            }),
+                            trailing: Watch(
+                              (context) => ColorIndicator(
+                                color: colorMenus[index].signal.value,
+                                onSelect: () => _showColorPicker(colorMenus[index].signal.value)
+                                    .then((value) => colorMenus[index].signal.value = value),
+                              ),
+                              dependencies: [settings().locale, colorMenus[index].signal],
+                            ),
+                          ),
+                        ),
                     ],
                   );
                 },
@@ -276,11 +326,40 @@ class _MyHomePageState extends State<MyHomePage> {
       )
           .then((value) {
         if (value?.imageBytes != null) {
-          return value!.imageBytes!.addTextToImage(DateTime.now().toLocal().toString());
+          return value!.imageBytes!.addTextToImage(
+            DateTime.now().toLocal().toString(),
+            textColor: settings.value.textOverlayColor.value,
+            backgroundColor: settings.value.backgroundOverlayColor.value,
+          );
         }
         return null;
       });
     });
+  }
+
+  Future<Color> _showColorPicker(Color color) {
+    return showColorPickerDialog(
+      context,
+      color,
+      width: 40,
+      height: 40,
+      spacing: 0,
+      runSpacing: 0,
+      borderRadius: 0,
+      wheelDiameter: 165,
+      enableOpacity: true,
+      showColorCode: true,
+      colorCodeHasColor: true,
+      pickersEnabled: <ColorPickerType, bool>{
+        ColorPickerType.wheel: true,
+      },
+      actionButtons: const ColorPickerActionButtons(
+        okButton: false,
+        closeButton: true,
+        dialogActionButtons: true,
+      ),
+      constraints: const BoxConstraints(minHeight: 480, minWidth: 320, maxWidth: 320),
+    );
   }
 
   Future<void> _showMenuDialog({
