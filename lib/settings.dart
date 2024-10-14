@@ -59,6 +59,18 @@ class Settings {
     },
   );
 
+  late Signal<Color> backgroundOverlayColor = _setting(
+    'background_overlay_color',
+    get: (key) => Color(prefs.getInt(key) ?? 0xFFFFFFFF),
+    set: (key, val) {
+      if (val == null) {
+        prefs.remove(key);
+      } else {
+        prefs.setInt(key, val.value);
+      }
+    },
+  );
+
   void dispose() {
     for (final cb in _cleanup) {
       cb();

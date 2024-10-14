@@ -3,5 +3,6 @@
     "settings": "Settings",
     "licenses": "Licenses",
     "language": "Language",
-    "overlayTextColor": "Overlay Text Color"
+    "overlayTextColor": "Overlay Text Color",
+    "overlayBackgroundColor": "Overlay Background Color"
 }

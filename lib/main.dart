@@ -72,11 +72,12 @@ extension Uint8ListX on Uint8List {
   }
 }
 
-enum ColorMenuTitle {
+enum OverlayMenuTile {
   overlayTextColor,
+  overlayBackgroundColor,
 }
 
-typedef ColorMenu = ({ColorMenuTitle title, Signal<Color> signal});
+typedef ColorMenu = ({OverlayMenuTile? overlayTile, Signal<Color> signal});
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,7 +178,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Text(context.l10n.settings),
                 onPressed: () {
                   final colorMenus = <ColorMenu>[
-                    (title: ColorMenuTitle.overlayTextColor, signal: settings().textOverlayColor)
+                    (
+                      overlayTile: OverlayMenuTile.overlayTextColor,
+                      signal: settings().textOverlayColor
+                    ),
+                    (
+                      overlayTile: OverlayMenuTile.overlayBackgroundColor,
+                      signal: settings().backgroundOverlayColor
+                    ),
                   ];
                   _showMenuDialog(
                     context: context,
@@ -209,16 +217,16 @@ class _MyHomePageState extends State<MyHomePage> {
                         Watch(
                           (context) => ListTile(
                             leading: index == 0
-                                ? const Icon(Icons.color_lens)
-                                : const SizedBox.square(dimension: 40.0),
-                            title: Text(switch (colorMenus[index].title) {
-                              ColorMenuTitle.overlayTextColor => context.l10n.overlayTextColor,
+                                ? const Icon(Icons.layers)
+                                : const SizedBox.square(dimension: 24.0),
+                            title: Text(switch (colorMenus[index].overlayTile) {
+                              OverlayMenuTile.overlayTextColor => context.l10n.overlayTextColor,
+                              OverlayMenuTile.overlayBackgroundColor =>
+                                context.l10n.overlayBackgroundColor,
+                              _ => throw Exception('Invalid overlay tile'),
                             }),
                             trailing: Watch(
                               (context) => ColorIndicator(
-                                width: 44,
-                                height: 44,
-                                borderRadius: 22,
                                 color: colorMenus[index].signal.value,
                                 onSelect: () => _showColorPicker(colorMenus[index].signal.value)
                                     .then((value) => colorMenus[index].signal.value = value),
@@ -321,6 +329,7 @@ class _MyHomePageState extends State<MyHomePage> {
           return value!.imageBytes!.addTextToImage(
             DateTime.now().toLocal().toString(),
             textColor: settings.value.textOverlayColor.value,
+            backgroundColor: settings.value.backgroundOverlayColor.value,
           );
         }
         return null;

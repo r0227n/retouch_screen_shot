@@ -3,5 +3,6 @@
     "settings": "設定",
     "licenses": "ライセンス",
     "language": "言語",
-    "overlayTextColor": "合成文字色"
+    "overlayTextColor": "合成文字色",
+    "overlayBackgroundColor": "合成背景色"
 }
