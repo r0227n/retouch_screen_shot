@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:signals/signals_flutter.dart';
@@ -5,6 +7,8 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pasteboard/pasteboard.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'l10n/l10n.dart';
 import 'settings.dart';
@@ -318,23 +322,34 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void capture(CaptureMode mode) {
     setState(() {
-      _futureImage = screenCapturer
-          .capture(
-        mode: mode,
-        imagePath: null,
-        silent: false,
-      )
-          .then((value) {
-        if (value?.imageBytes != null) {
-          return value!.imageBytes!.addTextToImage(
-            DateTime.now().toLocal().toString(),
-            textColor: settings.value.textOverlayColor.value,
-            backgroundColor: settings.value.backgroundOverlayColor.value,
-          );
+      _futureImage = Future(() async {
+        final capture = await screenCapturer.capture(
+          mode: mode,
+          imagePath: null,
+          silent: false,
+        );
+        if (capture?.imageBytes == null) {
+          return null;
         }
-        return null;
+
+        final overlayImage = capture!.imageBytes!.addTextToImage(
+          DateTime.now().toLocal().toString(),
+          textColor: settings.value.textOverlayColor.value,
+          backgroundColor: settings.value.backgroundOverlayColor.value,
+        );
+
+        await copyToClipboard(overlayImage);
+        return overlayImage;
       });
     });
+  }
+
+  Future<void> copyToClipboard(Uint8List data) async {
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/screenshot.png');
+    await file.writeAsBytes(data);
+
+    await Pasteboard.writeFiles([file.path]);
   }
 
   Future<Color> _showColorPicker(Color color) {

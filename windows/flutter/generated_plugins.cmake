@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   hotkey_manager_windows
+  pasteboard
   screen_capturer_windows
 )
 
