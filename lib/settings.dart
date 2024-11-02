@@ -47,6 +47,18 @@ class Settings {
     },
   );
 
+  late Signal<Color> appColorScheme = _setting(
+    'app_color_scheme',
+    get: (key) => Color(prefs.getInt(key) ?? 0xFF673AB7),
+    set: (key, val) {
+      if (val == null) {
+        prefs.remove(key);
+      } else {
+        prefs.setInt(key, val.value);
+      }
+    },
+  );
+
   late Signal<Color> textOverlayColor = _setting(
     'text_overlay_color',
     get: (key) => Color(prefs.getInt(key) ?? 0xFF000000),

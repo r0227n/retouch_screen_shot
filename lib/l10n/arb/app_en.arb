@@ -3,6 +3,7 @@
     "settings": "Settings",
     "licenses": "Licenses",
     "language": "Language",
+    "appColorThme": "App Color Thme",
     "overlayTextColor": "Overlay Text Color",
     "overlayBackgroundColor": "Overlay Background Color"
 }
