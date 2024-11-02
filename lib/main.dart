@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: settings().appColorScheme.watch(context)),
         useMaterial3: true,
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -149,6 +149,21 @@ class _MyHomePageState extends State<MyHomePage> {
                           }).toList(),
                         ),
                       ),
+                      const Divider(),
+                      ListTile(
+                          leading: const Icon(Icons.color_lens),
+                          title: Watch(
+                            (context) => Text(context.l10n.appColorThme),
+                            dependencies: [settings().locale],
+                          ),
+                          trailing: Watch(
+                            (context) => ColorIndicator(
+                              color: settings().appColorScheme.value,
+                              onSelect: () => _showColorPicker(settings().appColorScheme.value)
+                                  .then((value) => settings().appColorScheme.value = value),
+                            ),
+                            dependencies: [settings().appColorScheme],
+                          )),
                       const Divider(),
                       for (var index = 0; index < colorMenus.length; index++)
                         Watch(
